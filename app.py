@@ -608,11 +608,21 @@ with tab3:
         with col1:
             if st.button("💾 Guardar cambios de hooks", type="primary"):
                 # Actualizar el DataFrame original
-                for idx, row in edited_hooks.iterrows():
-                    original_idx = review_df.index[idx]
-                    for col in available_hook_cols:
-                        if col in ["Person_Hook", "Hook_Confidence", "Hook_Source_URL"] and col in row:
-                            df.at[original_idx, col] = row[col]
+                if st.session_state.get('selected_contact_idx') is not None:
+                    # Si estamos viendo un registro específico
+                    original_idx = st.session_state['selected_contact_idx']
+                    if len(edited_hooks) > 0:
+                        row = edited_hooks.iloc[0]  # Solo hay una fila
+                        for col in available_hook_cols:
+                            if col in ["Person_Hook", "Hook_Confidence", "Hook_Source_URL"] and col in row:
+                                df.at[original_idx, col] = row[col]
+                else:
+                    # Si estamos viendo todos los registros
+                    for idx, row in edited_hooks.iterrows():
+                        original_idx = review_df.index[idx]
+                        for col in available_hook_cols:
+                            if col in ["Person_Hook", "Hook_Confidence", "Hook_Source_URL"] and col in row:
+                                df.at[original_idx, col] = row[col]
                 
                 df.to_csv("857-vc-funds-with-email-template.csv", index=False)
                 st.success("✅ Cambios de hooks guardados")
