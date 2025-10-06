@@ -461,7 +461,67 @@ print(f"✅ Lote web completado: {{generated_count}} hooks generados")
 with tab3:
     st.header("👀 Revisión y Edición de Hooks")
     
+    # Buscador de registros específicos
+    st.subheader("🔍 Buscar Registro Específico")
+    
+    search_col1, search_col2 = st.columns([3, 1])
+    
+    with search_col1:
+        search_term = st.text_input(
+            "Buscar por nombre, fondo o país:",
+            placeholder="Ej: John Smith, Goldman Sachs, UAE...",
+            key="search_input"
+        )
+    
+    with search_col2:
+        if st.button("🔍 Buscar", type="primary"):
+            st.session_state['search_performed'] = True
+            st.session_state['search_term'] = search_term
+    
+    # Mostrar resultados de búsqueda si se realizó una búsqueda
+    if st.session_state.get('search_performed', False) and st.session_state.get('search_term', '').strip():
+        search_term = st.session_state['search_term'].strip()
+        
+        # Buscar en múltiples columnas
+        search_results = df[
+            df['Primary Contact'].str.contains(search_term, case=False, na=False) |
+            df['Investors'].str.contains(search_term, case=False, na=False) |
+            df['country'].str.contains(search_term, case=False, na=False) |
+            df['HQ Location'].str.contains(search_term, case=False, na=False)
+        ]
+        
+        if len(search_results) > 0:
+            st.success(f"✅ Encontrados {len(search_results)} resultados para '{search_term}'")
+            
+            # Mostrar resultados en un selectbox
+            result_options = []
+            for idx, row in search_results.iterrows():
+                display_text = f"{row['Primary Contact']} - {row['Investors']} ({row['country']})"
+                result_options.append((idx, display_text))
+            
+            selected_result = st.selectbox(
+                "Selecciona un resultado:",
+                options=range(len(result_options)),
+                format_func=lambda x: result_options[x][1],
+                key="search_result_select"
+            )
+            
+            if st.button("📝 Ir a este registro"):
+                # Filtrar para mostrar solo el registro seleccionado
+                selected_idx = result_options[selected_result][0]
+                st.session_state['selected_contact_idx'] = selected_idx
+                st.rerun()
+        else:
+            st.warning(f"⚠️ No se encontraron resultados para '{search_term}'")
+            if st.button("🔄 Limpiar búsqueda"):
+                st.session_state['search_performed'] = False
+                st.session_state['search_term'] = ''
+                st.rerun()
+    
+    st.divider()
+    
     # Filtros para revisión
+    st.subheader("🔧 Filtros de Revisión")
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -480,20 +540,32 @@ with tab3:
     # Aplicar filtros
     review_df = df.copy()
     
-    if hook_status == "Con hook":
-        review_df = review_df[review_df["Person_Hook"].notna() & (review_df["Person_Hook"] != "")]
-    elif hook_status == "Sin hook":
-        review_df = review_df[review_df["Person_Hook"].isna() | (review_df["Person_Hook"] == "")]
-    elif hook_status == "Confianza baja":
-        review_df = review_df[
-            (review_df["Person_Hook"].notna()) & 
-            (review_df["Person_Hook"] != "") &
-            (review_df["Hook_Confidence"].astype(str).str.isdigit()) &
-            (review_df["Hook_Confidence"].astype(int) < confidence_threshold)
-        ]
-    
-    if country_review != "Todos":
-        review_df = review_df[review_df["country"] == country_review]
+    # Si se seleccionó un registro específico, mostrar solo ese
+    if st.session_state.get('selected_contact_idx') is not None:
+        selected_idx = st.session_state['selected_contact_idx']
+        review_df = review_df[review_df.index == selected_idx]
+        st.info(f"📍 Mostrando registro específico: {review_df.iloc[0]['Primary Contact']} - {review_df.iloc[0]['Investors']}")
+        
+        # Botón para limpiar selección
+        if st.button("🔄 Ver todos los registros"):
+            st.session_state['selected_contact_idx'] = None
+            st.rerun()
+    else:
+        # Aplicar filtros normales solo si no hay selección específica
+        if hook_status == "Con hook":
+            review_df = review_df[review_df["Person_Hook"].notna() & (review_df["Person_Hook"] != "")]
+        elif hook_status == "Sin hook":
+            review_df = review_df[review_df["Person_Hook"].isna() | (review_df["Person_Hook"] == "")]
+        elif hook_status == "Confianza baja":
+            review_df = review_df[
+                (review_df["Person_Hook"].notna()) & 
+                (review_df["Person_Hook"] != "") &
+                (review_df["Hook_Confidence"].astype(str).str.isdigit()) &
+                (review_df["Hook_Confidence"].astype(int) < confidence_threshold)
+            ]
+        
+        if country_review != "Todos":
+            review_df = review_df[review_df["country"] == country_review]
     
     st.write(f"**Mostrando {len(review_df)} de {len(df)} contactos**")
     
