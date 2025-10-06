@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import subprocess
 import sys
+import random
 
 # Configuración de la página
 st.set_page_config(
@@ -15,7 +16,7 @@ st.title("📧 VC Outreach Email Editor")
 st.markdown("Edita hooks personalizados y cualquier columna de tu base de datos de VC.")
 
 # Tabs para organizar funcionalidades
-tab1, tab2, tab3 = st.tabs(["📝 Editor de Datos", "🤖 Generador de Hooks", "👀 Revisión de Hooks"])
+tab1, tab2, tab3, tab4 = st.tabs(["📝 Editor de Datos", "🤖 Generador de Hooks", "👀 Revisión de Hooks", "🎲 Vista Previa Aleatoria"])
 
 # Cargar datos
 @st.cache_data
@@ -676,3 +677,237 @@ Body: {selected_hook_row.get('Email_Body', '')}
                                 st.error(f"❌ Error: {e}")
     else:
         st.info("No hay contactos que coincidan con los filtros seleccionados")
+
+# Tab 4: Vista Previa Aleatoria
+with tab4:
+    st.header("🎲 Vista Previa Aleatoria")
+    st.markdown("Explora contactos aleatorios y ve cómo se ven los emails completos.")
+    
+    # Botón para randomizar
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        if st.button("🎲 Seleccionar contacto aleatorio", type="primary"):
+            st.rerun()
+    
+    with col2:
+        # Filtro por país para randomizar
+        countries_random = ["Todos"] + sorted(df["country"].dropna().unique().tolist())
+        country_filter = st.selectbox("Filtrar por país:", countries_random, key="random_country")
+    
+    with col3:
+        # Filtro por estado del hook
+        hook_status_filter = st.selectbox("Estado del hook:", ["Todos", "Con hook", "Sin hook"], key="random_hook_status")
+    
+    # Aplicar filtros para randomizar
+    random_df = df.copy()
+    if country_filter != "Todos":
+        random_df = random_df[random_df["country"] == country_filter]
+    if hook_status_filter == "Con hook":
+        random_df = random_df[random_df["Person_Hook"].notna() & (random_df["Person_Hook"] != "")]
+    elif hook_status_filter == "Sin hook":
+        random_df = random_df[random_df["Person_Hook"].isna() | (random_df["Person_Hook"] == "")]
+    
+    if len(random_df) > 0:
+        # Seleccionar contacto aleatorio
+        random_idx = st.session_state.get('random_idx', 0)
+        if 'random_idx' not in st.session_state:
+            random_idx = random_df.index[0]
+        
+        # Botón para cambiar contacto aleatorio
+        if st.button("🎲 Cambiar contacto aleatorio"):
+            random_idx = random.choice(random_df.index)
+            st.session_state['random_idx'] = random_idx
+            st.rerun()
+        
+        # Obtener contacto seleccionado
+        selected_contact = random_df.loc[random_idx]
+        
+        # Mostrar información del contacto
+        st.subheader("👤 Información del Contacto")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write(f"**Nombre:** {selected_contact.get('Primary Contact', 'N/A')}")
+            st.write(f"**Título:** {selected_contact.get('Primary Contact Title', 'N/A')}")
+            st.write(f"**Fondo:** {selected_contact.get('Investors', 'N/A')}")
+            st.write(f"**País:** {selected_contact.get('country', 'N/A')}")
+            st.write(f"**Ubicación:** {selected_contact.get('HQ Location', 'N/A')}")
+        
+        with col2:
+            st.write(f"**Sectores preferidos:** {selected_contact.get('Preferred Verticals', 'N/A')}")
+            st.write(f"**Tipos de inversión:** {selected_contact.get('Preferred Investment Types', 'N/A')}")
+            st.write(f"**Geografía preferida:** {selected_contact.get('Preferred Geography', 'N/A')}")
+            st.write(f"**Industria:** {selected_contact.get('Preferred Industry', 'N/A')}")
+            st.write(f"**Última inversión:** {selected_contact.get('Last Investment Company', 'N/A')}")
+        
+        # Descripción del fondo
+        if selected_contact.get('Description'):
+            st.write(f"**Descripción del fondo:** {selected_contact.get('Description', 'N/A')[:300]}...")
+        
+        st.divider()
+        
+        # Hook personalizado
+        st.subheader("🎯 Hook Personalizado")
+        
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            current_hook = selected_contact.get('Person_Hook', 'Sin hook')
+            if current_hook and current_hook != 'Sin hook':
+                st.success(f"**Hook actual:** {current_hook}")
+            else:
+                st.warning("**Hook actual:** Sin hook personalizado")
+        
+        with col2:
+            if st.button("🔄 Regenerar hook", key=f"regenerate_random_{random_idx}"):
+                with st.spinner("Regenerando hook..."):
+                    try:
+                        # Importar función de generación
+                        import sys
+                        sys.path.append('.')
+                        from generate_hooks import generate_hook
+                        
+                        # Crear contexto del email
+                        email_context = f"""
+Subject: {selected_contact.get('Email_Subject', '')}
+Body: {selected_contact.get('Email_Body', '')}
+"""
+                        
+                        # Generar nuevo hook
+                        new_hook = generate_hook(selected_contact.to_dict(), email_context)
+                        
+                        if new_hook:
+                            # Actualizar en el DataFrame
+                            df.at[random_idx, "Person_Hook"] = new_hook
+                            df.at[random_idx, "Hook_Confidence"] = "8"
+                            
+                            # Guardar cambios
+                            df.to_csv("857-vc-funds-with-email-template.csv", index=False)
+                            st.success(f"✅ Hook regenerado: {new_hook}")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error("❌ Error regenerando hook")
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+        
+        st.divider()
+        
+        # Vista previa del email completo
+        st.subheader("📧 Vista Previa del Email")
+        
+        # Asunto
+        st.markdown("**Asunto:**")
+        st.code(selected_contact.get('Email_Subject', 'N/A'))
+        
+        # Cuerpo del email
+        st.markdown("**Cuerpo del email:**")
+        email_body = selected_contact.get('Email_Body', 'N/A')
+        
+        # Resaltar el hook en el email
+        if current_hook and current_hook != 'Sin hook':
+            # Reemplazar el hook genérico con el personalizado para mostrar
+            fund_name = selected_contact.get('Investors', '')
+            generic_hook = f"your leadership at {fund_name} caught my attention"
+            
+            # Intentar diferentes variaciones del hook genérico
+            highlighted_body = email_body
+            if generic_hook in email_body:
+                highlighted_body = email_body.replace(generic_hook, f"**{current_hook}**")
+            elif "your leadership at {{fund_name}} caught my attention" in email_body:
+                highlighted_body = email_body.replace("your leadership at {{fund_name}} caught my attention", f"**{current_hook}**")
+            elif "your leadership at" in email_body and "caught my attention" in email_body:
+                # Buscar y reemplazar cualquier variación
+                import re
+                pattern = r"your leadership at [^,]*caught my attention"
+                highlighted_body = re.sub(pattern, f"**{current_hook}**", email_body)
+            
+            st.markdown(highlighted_body)
+        else:
+            st.markdown(email_body)
+        
+        st.divider()
+        
+        # Estadísticas del contacto
+        st.subheader("📊 Estadísticas del Contacto")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Confianza del hook", selected_contact.get('Hook_Confidence', 'N/A'))
+        
+        with col2:
+            st.metric("Honorífico", selected_contact.get('Honorific', 'N/A'))
+        
+        with col3:
+            st.metric("Email disponible", "Sí" if selected_contact.get('Primary Contact Email') else "No")
+        
+        with col4:
+            st.metric("Teléfono disponible", "Sí" if selected_contact.get('Primary Contact Phone') else "No")
+        
+        # Botones de acción
+        st.subheader("🔧 Acciones")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("✏️ Editar en Tab 3", key=f"edit_{random_idx}"):
+                st.info("Ve al Tab 3 y filtra por este contacto para editarlo")
+        
+        with col2:
+            if st.button("📊 Exportar este contacto", key=f"export_{random_idx}"):
+                # Crear DataFrame con solo este contacto
+                single_contact = df[df.index == random_idx]
+                single_contact.to_excel("contacto_individual.xlsx", index=False)
+                st.success("✅ Contacto exportado a 'contacto_individual.xlsx'")
+        
+        with col3:
+            if st.button("🔄 Regenerar email completo", key=f"regenerate_email_{random_idx}"):
+                # Regenerar email con el hook actual
+                if selected_contact.get('Person_Hook'):
+                    fund_name = selected_contact.get('Investors', '')
+                    new_hook = selected_contact.get('Person_Hook')
+                    
+                    # Intentar diferentes variaciones del hook genérico
+                    email_body = df.at[random_idx, "Email_Body"]
+                    updated_body = email_body
+                    
+                    # Reemplazar diferentes variaciones
+                    generic_hook = f"your leadership at {fund_name} caught my attention"
+                    if generic_hook in email_body:
+                        updated_body = email_body.replace(generic_hook, new_hook)
+                    elif "your leadership at {{fund_name}} caught my attention" in email_body:
+                        updated_body = email_body.replace("your leadership at {{fund_name}} caught my attention", new_hook)
+                    elif "your leadership at" in email_body and "caught my attention" in email_body:
+                        import re
+                        pattern = r"your leadership at [^,]*caught my attention"
+                        updated_body = re.sub(pattern, new_hook, email_body)
+                    
+                    df.at[random_idx, "Email_Body"] = updated_body
+                    df.to_csv("857-vc-funds-with-email-template.csv", index=False)
+                    st.success("✅ Email regenerado con hook actual")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.warning("⚠️ No hay hook personalizado para regenerar")
+        
+        # Información adicional
+        st.subheader("ℹ️ Información Adicional")
+        
+        if selected_contact.get('Hook_Source_URL'):
+            st.write(f"**Fuente del hook:** {selected_contact.get('Hook_Source_URL')}")
+        
+        if selected_contact.get('Website'):
+            st.write(f"**Website del fondo:** {selected_contact.get('Website')}")
+        
+        if selected_contact.get('Primary Contact Email'):
+            st.write(f"**Email de contacto:** {selected_contact.get('Primary Contact Email')}")
+        
+        if selected_contact.get('Primary Contact Phone'):
+            st.write(f"**Teléfono:** {selected_contact.get('Primary Contact Phone')}")
+    
+    else:
+        st.warning("⚠️ No hay contactos que coincidan con los filtros seleccionados")
+        st.info("💡 Cambia los filtros para ver más contactos")
