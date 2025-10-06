@@ -40,7 +40,7 @@ def pick_fund_column(columns: list[str]) -> str | None:
 
     # Common possibilities, ordered by preference
     preferred = [
-        "fund name", "firm name", "organization", "organisation", "company",
+        "investors", "fund name", "firm name", "organization", "organisation", "company",
         "investor", "fund", "firm", "name"
     ]
     for want in preferred:
@@ -49,7 +49,7 @@ def pick_fund_column(columns: list[str]) -> str | None:
                 return c
 
     # Fuzzy contains search fallbacks
-    contains_order = ["fund", "firm", "investor", "organization", "company", "name"]
+    contains_order = ["investors", "fund", "firm", "investor", "organization", "company", "name"]
     for token in contains_order:
         for c, lc in lower.items():
             if token in lc:
