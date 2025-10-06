@@ -17,8 +17,8 @@ LANDING_PAGE = "https://zarcoideas.com"
 SUBJECT_TEMPLATE = "CFA Charterholder | Exploring collaboration with {{fund_name}}"
 
 BODY_TEMPLATE = (
-    "Dear {{honorific}} {{last_name}},\n\n"
-    "I’m Victor G. Zarco, CFA Bs. in Actuarial Science and Financial Economist.  \n"
+    "{{honorific}} {{last_name}},\n\n"
+    "I'm Victor G. Zarco, CFA Bs. in Actuarial Science and Financial Economist.  \n"
     "I came across your leadership in {{fund_name}}, particularly {{person_hook_sentence}}.\n\n"
     "I am eager to foster relationships within the magnificent Middle East in collaboration with {{fund_name}}.\n\n"
     "Most recently, I've  \n"
