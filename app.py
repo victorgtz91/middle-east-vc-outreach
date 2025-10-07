@@ -123,6 +123,48 @@ with tab1:
                 st.success("✅ Emails regenerados con nuevos hooks")
                 st.cache_data.clear()
                 st.rerun()
+    
+    # Botón Finalizar - Generar CSV con 8 columnas específicas
+    st.divider()
+    st.subheader("🎯 Finalizar - Exportar CSV Final")
+    
+    if st.button("✅ Finalizar - Generar CSV Final", type="primary", help="Genera un CSV con las 8 columnas necesarias para el envío"):
+        # Crear DataFrame con las 8 columnas solicitadas
+        final_df = pd.DataFrame()
+        
+        # Mapear columnas del DataFrame original a las columnas finales
+        final_df["Full_name"] = df["Primary Contact"].fillna("")
+        final_df["email"] = df["Primary Contact Email"].fillna("")
+        final_df["body"] = df["Email_Body"].fillna("")
+        final_df["subject"] = df["Email_Subject"].fillna("")
+        final_df["first_name"] = df["First Name"].fillna("")
+        final_df["last_name"] = df["Last Name"].fillna("")
+        final_df["fund_name"] = df["Investors"].fillna("")
+        final_df["fund_short_name"] = df["Short_Name"].fillna("")
+        
+        # Guardar CSV final
+        output_file = "857-vc-funds-final.csv"
+        final_df.to_csv(output_file, index=False)
+        
+        st.success(f"✅ CSV final generado: {output_file}")
+        st.info(f"📊 {len(final_df)} registros exportados con 8 columnas")
+        
+        # Mostrar preview del CSV
+        st.subheader("📋 Preview del CSV Final")
+        st.dataframe(final_df.head(10), use_container_width=True)
+        
+        # Mostrar estadísticas
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total registros", len(final_df))
+        with col2:
+            emails_with_data = len(final_df[final_df["email"].str.strip() != ""])
+            st.metric("Con email", emails_with_data)
+        with col3:
+            hooks_with_data = len(final_df[final_df["body"].str.contains("your leadership at", case=False, na=False) == False])
+            st.metric("Con hooks personalizados", hooks_with_data)
+        with col4:
+            st.metric("Columnas", 8)
 
     # Vista previa de emails
     st.header("👀 Vista Previa de Emails")
