@@ -909,6 +909,16 @@ Body: {selected_contact.get('Email_Body', '')}
             st.markdown(highlighted_body)
         else:
             st.markdown(email_body)
+
+        # Enlace al Resume detectado en el cuerpo
+        import re as _re
+        resume_match = _re.search(r"https?://[^\s]+drive\.google\.com[^\s]*", email_body)
+        if resume_match:
+            resume_url = resume_match.group(0)
+            st.markdown(f"**Resume:** [Abrir en Google Drive]({resume_url})")
+        else:
+            # Fallback al enlace conocido si no está embebido
+            st.markdown("**Resume:** [Abrir en Google Drive](https://drive.google.com/file/d/1Kf4b0aHtZu2Flnj9mKnleRfRQZ94U7DT/view?usp=drive_link)")
         
         st.divider()
         
