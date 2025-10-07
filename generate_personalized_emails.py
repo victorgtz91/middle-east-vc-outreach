@@ -20,7 +20,7 @@ BODY_TEMPLATE = (
     "{{honorific}} {{last_name}},\n\n"
     "I'm Victor G. Zarco, CFA Bs. in Actuarial Science and Financial Economist.  \n"
     "I came across your leadership in {{fund_name}}, particularly {{person_hook_sentence}}.\n\n"
-    "I am eager to foster relationships within the magnificent Middle East in collaboration with {{fund_name}}.\n\n"
+    "I am eager to foster relationships within the magnificent Middle East in collaboration with {{short_name}}.\n\n"
     "Most recently, I've  \n"
     "* supported a seven-figure equity raise for a U.S. diagnostics company,  \n"
     "* co-founded a consumer wellness brand in Mexico, scaling it nationwide through e-commerce, and  \n"
@@ -69,6 +69,11 @@ def build_tokens(row, fund_col: str):
     honorific = safe_get(row, "Honorific")
     last_name = safe_get(row, "Last Name") or safe_get(row, "Last name") or safe_get(row, "Last")
     fund_name = safe_get(row, fund_col) if fund_col else "your fund"
+    
+    # Get short name, fallback to fund name if not available
+    short_name = safe_get(row, "Short_Name")
+    if not short_name:
+        short_name = fund_name
 
     # Default hook sentence placeholder
     person_hook_sentence = (
@@ -80,6 +85,7 @@ def build_tokens(row, fund_col: str):
         "{{honorific}}": honorific,
         "{{last_name}}": last_name,
         "{{fund_name}}": fund_name,
+        "{{short_name}}": short_name,
         "{{person_hook_sentence}}": person_hook_sentence,
         "{{landing_page}}": LANDING_PAGE,
     }
