@@ -25,7 +25,7 @@ BODY_TEMPLATE = (
     "Victor Gutierrez, CFA  \n"
     "+1 786 354 5031 • victor@zarcoideas.com  \n"
     "{{landing_page}}  \n"
-    "CV attached"
+    "Resume: https://drive.google.com/file/d/1Kf4b0aHtZu2Flnj9mKnleRfRQZ94U7DT/view?usp=drive_link"
 )
 
 
